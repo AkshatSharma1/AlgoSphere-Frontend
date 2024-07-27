@@ -28,7 +28,7 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 	let [userCode, setUserCode] = useState<string>(problem.starterCode);
 	const [language, setLanguage] = useState<string>('javascript');
 	const [code, setCode] = useState<string>('hello');
-    const [theme, setTheme] = useState<string>('twilight');
+	const [theme, setTheme] = useState<string>('twilight');
 
 	const [settings, setSettings] = useState<ISettings>({
 		fontSize: "16px",
@@ -52,25 +52,25 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 		}
 		try {
 			userCode = userCode.slice(userCode.indexOf(problem.starterFunctionName));
-			await axios.post("http://localhost:3001/api/v1/submissions", {
-				code, language, userId: 1, problemId:1
-			}).then((response)=>{
-				if(response.data?.success) {
+			await axios.post(`${process.env.NEXT_PUBLIC_CODE_SUBMISSION_URL}/api/v1/submissions`, {
+				code, language, userId: 1, problemId: '667430fcb50c9db42efe737f'
+			}).then((response) => {
+				if (response.data?.success) {
 					toast.success("Congrats! All tests passed!", {
-									position: "top-center",
-									autoClose: 3000,
-									theme: "dark",
-								});
-								setSuccess(true);
+						position: "top-center",
+						autoClose: 3000,
+						theme: "dark",
+					});
+					setSuccess(true);
 					setTimeout(() => {
 						setSuccess(false);
 					}, 4000);
-								setSolved(true);
+					setSolved(true);
 				} else {
 					throw response;
 				}
 			})
-		
+
 			// if (typeof handler === "function") {
 			// 	const success = handler(cb);
 			// 	if (success) {
@@ -125,26 +125,26 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 	return (
 		<div className='flex flex-col bg-dark-layer-1 relative overflow-x-hidden'>
 			<PreferenceNav settings={settings} setSettings={setSettings} language={language} setLanguage={setLanguage}
-			theme={theme} setTheme={setTheme} />
+				theme={theme} setTheme={setTheme} />
 
 			<Split className='h-[calc(100vh-94px)]' direction='vertical' sizes={[60, 40]} minSize={60}>
 				<div className='w-full overflow-auto'>
-				<AceEditor
-							value={code}
-							onChange={(e:string)=>setCode(e)}
-                            mode={language}
-                            theme={theme}
-                            name='codeEditor'
-                            className='editor'
-                            style={{ width: '100%'}}
-                            setOptions={{
-                                enableBasicAutocompletion: true,
-                                enableLiveAutocompletion: true,
-                                showLineNumbers: true,
-                                fontSize: settings.fontSize
-                            }}
-                            height='100%'
-                        />
+					<AceEditor
+						value={code}
+						onChange={(e: string) => setCode(e)}
+						mode={language}
+						theme={theme}
+						name='codeEditor'
+						className='editor'
+						style={{ width: '100%' }}
+						setOptions={{
+							enableBasicAutocompletion: true,
+							enableLiveAutocompletion: true,
+							showLineNumbers: true,
+							fontSize: settings.fontSize
+						}}
+						height='100%'
+					/>
 				</div>
 				<div className='w-full px-5 overflow-auto'>
 					{/* testcase heading */}

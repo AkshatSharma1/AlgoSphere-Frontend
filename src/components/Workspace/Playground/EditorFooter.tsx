@@ -1,11 +1,12 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BsChevronUp } from "react-icons/bs";
-
 type EditorFooterProps = {
 	handleSubmit: () => void;
 };
 
 const EditorFooter: React.FC<EditorFooterProps> = ({ handleSubmit }) => {
+
+
 	return (
 		<div className='flex bg-dark-layer-1 absolute bottom-0 z-10 w-full'>
 			<div className='mx-5 my-[10px] flex justify-between w-full'>

@@ -1,9 +1,10 @@
 import Topbar from "@/components/Topbar/Topbar";
 import Workspace from "@/components/Workspace/Workspace";
 import useHasMounted from "@/hooks/useHasMounted";
-import { problems } from "@/utils/problems";
-import { Problem } from "@/utils/types/problem";
 import React from "react";
+import { GetServerSideProps } from 'next';
+import axios from 'axios';
+import { Problem } from "@/utils/types/problem";
 
 type ProblemPageProps = {
 	problem: Problem;
@@ -21,37 +22,27 @@ const ProblemPage: React.FC<ProblemPageProps> = ({ problem }) => {
 		</div>
 	);
 };
-export default ProblemPage;
 
-// fetch the local data
-//  SSG
-// getStaticPaths => it create the dynamic routes
-export async function getStaticPaths() {
-	const paths = Object.keys(problems).map((key) => ({
-		params: { pid: key },
-	}));
+export const getServerSideProps: GetServerSideProps = async (context) => {
+	const { pid } = context.params as { pid: string };
 
-	return {
-		paths,
-		fallback: false,
-	};
-}
-
-// getStaticProps => it fetch the data
-
-export async function getStaticProps({ params }: { params: { pid: string } }) {
-	const { pid } = params;
-	const problem = problems[pid];
-
-	if (!problem) {
+	try {
+		// Fetch data from a different API endpoint
+		const response = await axios.get(`${process.env.NEXT_PUBLIC_CODE_PROBLEM_URL}/api/v1/problems/${pid}`);
+		const problem = response?.data?.data;
 		return {
-			notFound: true,
+			props: {
+				problem,
+			},
+		};
+	} catch (error) {
+		console.error("Failed to fetch problem data:", error);
+		return {
+			props: {
+				problem: null,
+			},
 		};
 	}
-	problem.handlerFunction = problem.handlerFunction.toString();
-	return {
-		props: {
-			problem,
-		},
-	};
-}
+};
+
+export default ProblemPage;

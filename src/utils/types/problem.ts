@@ -8,6 +8,11 @@ export type Example = {
 
 // local problem data
 export type Problem = {
+	description: string;
+	userSnippet: string;
+	codeStubs: any;
+	testCases: any;
+	_id: any;
 	id: string;
 	title: string;
 	problemStatement: string;
@@ -20,6 +25,7 @@ export type Problem = {
 };
 
 export type DBProblem = {
+	_id: string;
 	id: string;
 	title: string;
 	category: string;

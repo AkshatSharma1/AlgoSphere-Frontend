@@ -4,6 +4,7 @@ import Head from "next/head";
 import { RecoilRoot } from "recoil";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { SocketProvider } from '../context/SocketContext';
 export default function App({ Component, pageProps }: AppProps) {
 	return (
 		<RecoilRoot>
@@ -16,7 +17,9 @@ export default function App({ Component, pageProps }: AppProps) {
 				/>
 			</Head>
 			<ToastContainer />
-			<Component {...pageProps} />
+			<SocketProvider url={process.env.NEXT_PUBLIC_CODE_SOCKET_URL || ''}>
+				<Component {...pageProps} />
+			</SocketProvider>
 		</RecoilRoot>
 	);
 }

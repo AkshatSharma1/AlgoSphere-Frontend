@@ -9,6 +9,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/firebase/firebase";
 import { toast } from "react-toastify";
 import { useRouter } from "next/router";
+import { useSocket } from '../../../context/SocketContext'
 import axios from "axios";
 
 type PlaygroundProps = {
@@ -24,10 +25,33 @@ export interface ISettings {
 }
 
 const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved }) => {
+	const socket = useSocket();
+
+	useEffect(() => {
+		if (!socket) return;
+
+		socket.on('connect', () => {
+			console.log('Connected to server');
+		});
+		socket.on('submissionPayloadResponse', (data) => {
+			console.log('payload', data);
+		});
+
+		socket.on('disconnect', () => {
+			console.log('Disconnected from server');
+		});
+
+		// Handle other events here
+
+		return () => {
+			socket.off('connect');
+			socket.off('disconnect');
+		};
+	}, [socket]);
 	const [activeTestCaseId, setActiveTestCaseId] = useState<number>(0);
-	let [userCode, setUserCode] = useState<string>(problem.starterCode);
+	let [userCode, setUserCode] = useState<string>(problem.codeStubs[0].userSnippet);
 	const [language, setLanguage] = useState<string>('javascript');
-	const [code, setCode] = useState<string>('hello');
+	const [code, setCode] = useState<string>(problem.codeStubs[0].userSnippet);
 	const [theme, setTheme] = useState<string>('twilight');
 
 	const [settings, setSettings] = useState<ISettings>({
@@ -51,7 +75,7 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 			return;
 		}
 		try {
-			userCode = userCode.slice(userCode.indexOf(problem.starterFunctionName));
+			socket?.emit("setUserId", user.uid);
 			await axios.post(`${process.env.NEXT_PUBLIC_CODE_SUBMISSION_URL}/api/v1/submissions`, {
 				code, language, userId: 1, problemId: '667430fcb50c9db42efe737f'
 			}).then((response) => {
@@ -111,11 +135,11 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 	useEffect(() => {
 		const code = localStorage.getItem(`code-${pid}`);
 		if (user) {
-			setUserCode(code ? JSON.parse(code) : problem.starterCode);
+			setUserCode(code ? JSON.parse(code) : problem?.codeStubs[0]?.userSnippet);
 		} else {
-			setUserCode(problem.starterCode);
+			setUserCode(problem?.codeStubs[0]?.userSnippet);
 		}
-	}, [pid, user, problem.starterCode]);
+	}, [pid, user, problem?.codeStubs[0]?.userSnippet]);
 
 	const onChange = (value: string) => {
 		setUserCode(value);
@@ -156,10 +180,9 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 					</div>
 
 					<div className='flex'>
-						{problem.examples.map((example, index) => (
+						{problem?.testCases?.map((example: any, index: number) => (
 							<div
 								className='mr-2 items-start mt-2 '
-								key={example.id}
 								onClick={() => setActiveTestCaseId(index)}
 							>
 								<div className='flex flex-wrap items-center gap-y-4'>
@@ -178,11 +201,11 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 					<div className='font-semibold my-4'>
 						<p className='text-sm font-medium mt-4 text-white'>Input:</p>
 						<div className='w-full cursor-text rounded-lg border px-3 py-[10px] bg-dark-fill-3 border-transparent text-white mt-2'>
-							{problem.examples[activeTestCaseId].inputText}
+							{problem?.testCases[activeTestCaseId]?.input}
 						</div>
 						<p className='text-sm font-medium mt-4 text-white'>Output:</p>
 						<div className='w-full cursor-text rounded-lg border px-3 py-[10px] bg-dark-fill-3 border-transparent text-white mt-2'>
-							{problem.examples[activeTestCaseId].outputText}
+							{problem?.testCases[activeTestCaseId]?.output}
 						</div>
 					</div>
 				</div>

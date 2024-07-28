@@ -54,4 +54,9 @@ export const validParentheses: Problem = {
 	starterCode: starterCodeValidParenthesesJS,
 	starterFunctionName: "function validParentheses(",
 	order: 4,
+	description: "",
+	userSnippet: "",
+	codeStubs: undefined,
+	testCases: undefined,
+	_id: undefined
 };

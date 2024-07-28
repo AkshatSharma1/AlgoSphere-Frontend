@@ -7,6 +7,7 @@ import YouTube from "react-youtube";
 import { auth, firestore } from "@/firebase/firebase";
 import { DBProblem } from "@/utils/types/problem";
 import { useAuthState } from "react-firebase-hooks/auth";
+import axios from "axios";
 
 type ProblemsTableProps = {
 	setLoadingProblems: React.Dispatch<React.SetStateAction<boolean>>;
@@ -32,21 +33,20 @@ const ProblemsTable: React.FC<ProblemsTableProps> = ({ setLoadingProblems }) => 
 
 		return () => window.removeEventListener("keydown", handleEsc);
 	}, []);
-
 	return (
 		<>
 			<tbody className='text-white'>
-				{problems.length === 0?"No Data":problems.map((problem, idx) => {
+				{problems.length === 0 ? "No Data" : problems.map((problem, idx) => {
 					const difficulyColor =
 						problem.difficulty === "Easy"
 							? "text-dark-green-s"
 							: problem.difficulty === "Medium"
-							? "text-dark-yellow"
-							: "text-dark-pink";
+								? "text-dark-yellow"
+								: "text-dark-pink";
 					return (
-						<tr className={`${idx % 2 == 1 ? "bg-dark-layer-1" : ""}`} key={problem.id}>
+						<tr className={`${idx % 2 == 1 ? "bg-dark-layer-1" : ""}`} key={problem._id}>
 							<th className='px-2 py-4 font-medium whitespace-nowrap text-dark-green-s'>
-								{solvedProblems.includes(problem.id) && <BsCheckCircle fontSize={"18"} width='18' />}
+								{solvedProblems.includes(problem._id) && <BsCheckCircle fontSize={"18"} width='18' />}
 							</th>
 							<td className='px-6 py-4'>
 								{problem.link ? (
@@ -60,7 +60,7 @@ const ProblemsTable: React.FC<ProblemsTableProps> = ({ setLoadingProblems }) => 
 								) : (
 									<Link
 										className='hover:text-blue-600 cursor-pointer'
-										href={`/problems/${problem.id}`}
+										href={`/problems/${problem._id}`}
 									>
 										{problem.title}
 									</Link>
@@ -121,14 +121,15 @@ function useGetProblems(setLoadingProblems: React.Dispatch<React.SetStateAction<
 		const getProblems = async () => {
 			// fetching data logic
 			setLoadingProblems(true);
-			// const q = query(collection(firestore, "problems"), orderBy("order", "asc"));
-			// const querySnapshot = await getDocs(q);
-			// const tmp: DBProblem[] = [];
-			// querySnapshot.forEach((doc) => {
-			// 	tmp.push({ id: doc.id, ...doc.data() } as DBProblem);
-			// });
-			// setProblems(tmp);
-			setProblems([]);
+			await axios.get(`${process.env.NEXT_PUBLIC_CODE_PROBLEM_URL}/api/v1/problems`).then((response) => {
+				if (response?.data?.success) {
+					setProblems(response?.data?.data);
+				} else {
+					throw response;
+				}
+			}).catch(() => {
+				setProblems([]);
+			})
 			setLoadingProblems(false);
 		};
 

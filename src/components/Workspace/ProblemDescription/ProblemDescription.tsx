@@ -17,13 +17,13 @@ type ProblemDescriptionProps = {
 
 const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem, _solved }) => {
 	const [user] = useAuthState(auth);
-	const { currentProblem, loading, problemDifficultyClass, setCurrentProblem } = useGetCurrentProblem(problem._id);
-	const { liked, disliked, solved, setData, starred } = useGetUsersDataOnProblem(problem._id);
+	const { currentProblem, loading, problemDifficultyClass, setCurrentProblem } = useGetCurrentProblem(problem?._id);
+	const { liked, disliked, solved, setData, starred } = useGetUsersDataOnProblem(problem?._id);
 	const [updating, setUpdating] = useState(false);
 
 	const returnUserDataAndProblemData = async (transaction: any) => {
 		const userRef = doc(firestore, "users", user!.uid);
-		const problemRef = doc(firestore, "problems", problem._id);
+		const problemRef = doc(firestore, "problems", problem?._id);
 		const userDoc = await transaction.get(userRef);
 		const problemDoc = await transaction.get(problemRef);
 		return { userDoc, problemDoc, userRef, problemRef };
@@ -43,7 +43,7 @@ const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem, _solve
 				if (liked) {
 					// remove problem id from likedProblems on user document, decrement likes on problem document
 					transaction.update(userRef, {
-						likedProblems: userDoc.data().likedProblems.filter((id: string) => id !== problem._id),
+						likedProblems: userDoc.data().likedProblems.filter((id: string) => id !== problem?._id),
 					});
 					transaction.update(problemRef, {
 						likes: problemDoc.data().likes - 1,
@@ -53,8 +53,8 @@ const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem, _solve
 					setData((prev) => ({ ...prev, liked: false }));
 				} else if (disliked) {
 					transaction.update(userRef, {
-						likedProblems: [...userDoc.data().likedProblems, problem._id],
-						dislikedProblems: userDoc.data().dislikedProblems.filter((id: string) => id !== problem._id),
+						likedProblems: [...userDoc.data().likedProblems, problem?._id],
+						dislikedProblems: userDoc.data().dislikedProblems.filter((id: string) => id !== problem?._id),
 					});
 					transaction.update(problemRef, {
 						likes: problemDoc.data().likes + 1,
@@ -67,7 +67,7 @@ const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem, _solve
 					setData((prev) => ({ ...prev, liked: true, disliked: false }));
 				} else {
 					transaction.update(userRef, {
-						likedProblems: [...userDoc.data().likedProblems, problem._id],
+						likedProblems: [...userDoc.data().likedProblems, problem?._id],
 					});
 					transaction.update(problemRef, {
 						likes: problemDoc.data().likes + 1,
@@ -93,7 +93,7 @@ const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem, _solve
 				// already disliked, already liked, not disliked or liked
 				if (disliked) {
 					transaction.update(userRef, {
-						dislikedProblems: userDoc.data().dislikedProblems.filter((id: string) => id !== problem._id),
+						dislikedProblems: userDoc.data().dislikedProblems.filter((id: string) => id !== problem?._id),
 					});
 					transaction.update(problemRef, {
 						dislikes: problemDoc.data().dislikes - 1,
@@ -102,8 +102,8 @@ const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem, _solve
 					setData((prev) => ({ ...prev, disliked: false }));
 				} else if (liked) {
 					transaction.update(userRef, {
-						dislikedProblems: [...userDoc.data().dislikedProblems, problem.id],
-						likedProblems: userDoc.data().likedProblems.filter((id: string) => id !== problem._id),
+						dislikedProblems: [...userDoc.data().dislikedProblems, problem?.id],
+						likedProblems: userDoc.data().likedProblems.filter((id: string) => id !== problem?._id),
 					});
 					transaction.update(problemRef, {
 						dislikes: problemDoc.data().dislikes + 1,
@@ -115,7 +115,7 @@ const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem, _solve
 					setData((prev) => ({ ...prev, disliked: true, liked: false }));
 				} else {
 					transaction.update(userRef, {
-						dislikedProblems: [...userDoc.data().dislikedProblems, problem._id],
+						dislikedProblems: [...userDoc.data().dislikedProblems, problem?._id],
 					});
 					transaction.update(problemRef, {
 						dislikes: problemDoc.data().dislikes + 1,
@@ -139,13 +139,13 @@ const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem, _solve
 		if (!starred) {
 			const userRef = doc(firestore, "users", user.uid);
 			await updateDoc(userRef, {
-				starredProblems: arrayUnion(problem._id),
+				starredProblems: arrayUnion(problem?._id),
 			});
 			setData((prev) => ({ ...prev, starred: true }));
 		} else {
 			const userRef = doc(firestore, "users", user.uid);
 			await updateDoc(userRef, {
-				starredProblems: arrayRemove(problem._id),
+				starredProblems: arrayRemove(problem?._id),
 			});
 			setData((prev) => ({ ...prev, starred: false }));
 		}
@@ -224,7 +224,7 @@ const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem, _solve
 
 						{/* Problem Statement(paragraphs) */}
 						<div className='text-white text-sm'>
-							<div dangerouslySetInnerHTML={{ __html: problem.description }} />
+							<div dangerouslySetInnerHTML={{ __html: problem?.description }} />
 						</div>
 
 						{/* Examples */}
@@ -254,7 +254,7 @@ const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem, _solve
 						<div className='my-8 pb-4'>
 							<div className='text-white text-sm font-medium'>Constraints:</div>
 							<ul className='text-white ml-5 list-disc '>
-								<div dangerouslySetInnerHTML={{ __html: problem.constraints }} />
+								<div dangerouslySetInnerHTML={{ __html: problem?.constraints }} />
 							</ul>
 						</div>
 					</div>
@@ -281,9 +281,9 @@ function useGetCurrentProblem(problemId: string) {
 			// 	setCurrentProblem({ id: docSnap.id, ...problem } as DBProblem);
 			// 	// easy, medium, hard
 			// 	setProblemDifficultyClass(
-			// 		problem.difficulty === "Easy"
+			// 		problem?.difficulty === "Easy"
 			// 			? "bg-olive text-olive"
-			// 			: problem.difficulty === "Medium"
+			// 			: problem?.difficulty === "Medium"
 			// 			? "bg-dark-yellow text-dark-yellow"
 			// 			: " bg-dark-pink text-dark-pink"
 			// 	);

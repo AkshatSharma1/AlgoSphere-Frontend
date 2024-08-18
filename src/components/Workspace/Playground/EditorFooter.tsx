@@ -2,9 +2,10 @@ import React, { useEffect } from "react";
 import { BsChevronUp } from "react-icons/bs";
 type EditorFooterProps = {
 	handleSubmit: () => void;
+	status: "Pending" | "Success" | "RE" | "TLE" | "ME" | "WA" | ""
 };
 
-const EditorFooter: React.FC<EditorFooterProps> = ({ handleSubmit }) => {
+const EditorFooter: React.FC<EditorFooterProps> = ({ handleSubmit, status }) => {
 
 
 	return (
@@ -26,10 +27,10 @@ const EditorFooter: React.FC<EditorFooterProps> = ({ handleSubmit }) => {
 						Run
 					</button>
 					<button
-						className='px-3 py-1.5 font-medium items-center transition-all focus:outline-none inline-flex text-sm text-white bg-dark-green-s hover:bg-green-3 rounded-lg'
+						className={`px-3 py-1.5 font-medium items-center transition-all focus:outline-none inline-flex text-sm text-white ${status === "Pending" ? 'bg-yellow-700' : 'bg-dark-green-s'} hover:bg-green-3 rounded-lg`}
 						onClick={handleSubmit}
 					>
-						Submit
+						{status === "Pending" ? 'Pending...' : 'Submit'}
 					</button>
 				</div>
 			</div>

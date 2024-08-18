@@ -10,6 +10,20 @@ export const SocketProvider: React.FC<{ url: string, children: React.ReactNode }
 
     useEffect(() => {
         const socketInstance = io(url);
+
+        // Log connection status
+        socketInstance.on('connect', () => {
+            console.log('Socket connected:', socketInstance.id);
+        });
+
+        socketInstance.on('connect_error', (error) => {
+            console.error('Socket connection error:', error);
+        });
+
+        socketInstance.on('disconnect', (reason) => {
+            console.warn('Socket disconnected:', reason);
+        });
+
         setSocket(socketInstance);
 
         return () => {
@@ -23,3 +37,4 @@ export const SocketProvider: React.FC<{ url: string, children: React.ReactNode }
         </SocketContext.Provider>
     );
 };
+

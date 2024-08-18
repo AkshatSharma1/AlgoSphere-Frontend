@@ -30,30 +30,60 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 	useEffect(() => {
 		if (!socket) return;
 
+		// Check if the socket is connected
+		if (socket.connected) {
+			console.log('Socket connected');
+		} else {
+			console.warn('Socket not connected yet');
+		}
+		console.log('socket', socket)
+
 		socket.on('connect', () => {
 			console.log('Connected to server');
 		});
+
 		socket.on('submissionPayloadResponse', (data) => {
-			console.log('payload', data);
+			setStatus('');
+			if (data.response.status === 'Success') {
+				toast.success("Congrats! All tests passed!", {
+					position: "top-center",
+					autoClose: 3000,
+					theme: "dark",
+				});
+				setSuccess(true);
+				setSolved(true);
+			} else {
+				toast.error(`Wrong Answer \n ${data.response.output}`, {
+					position: "top-center",
+					autoClose: 3000,
+					theme: "dark",
+				});
+			}
+			setTimeout(() => {
+				setSuccess(false);
+			}, 4000);
+			console.log('Received submissionPayloadResponse:', data);
 		});
 
 		socket.on('disconnect', () => {
 			console.log('Disconnected from server');
 		});
 
-		// Handle other events here
-
 		return () => {
 			socket.off('connect');
+			socket.off('submissionPayloadResponse');
 			socket.off('disconnect');
 		};
 	}, [socket]);
-	const [activeTestCaseId, setActiveTestCaseId] = useState<number>(0);
-	let [userCode, setUserCode] = useState<string>(problem.codeStubs[0].userSnippet);
-	const [language, setLanguage] = useState<string>('javascript');
-	const [code, setCode] = useState<string>(problem.codeStubs[0].userSnippet);
-	const [theme, setTheme] = useState<string>('twilight');
 
+
+
+	const [activeTestCaseId, setActiveTestCaseId] = useState<number>(0);
+	let [userCode, setUserCode] = useState<string>(problem?.codeStubs[0].userSnippet);
+	const [language, setLanguage] = useState<string>('javascript');
+	const [code, setCode] = useState<string>(problem?.codeStubs[0].userSnippet);
+	const [theme, setTheme] = useState<string>('twilight');
+	const [status, setStatus] = useState<"" | "Pending" | "Success" | "RE" | "TLE" | "ME" | "WA">("");
 	const [settings, setSettings] = useState<ISettings>({
 		fontSize: "16px",
 		settingsModalIsOpen: false,
@@ -75,21 +105,12 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 			return;
 		}
 		try {
-			socket?.emit("setUserId", user.uid);
+			socket?.emit("setUserId", "1");
 			await axios.post(`${process.env.NEXT_PUBLIC_CODE_SUBMISSION_URL}/api/v1/submissions`, {
 				code, language, userId: 1, problemId: '667430fcb50c9db42efe737f'
 			}).then((response) => {
 				if (response.data?.success) {
-					toast.success("Congrats! All tests passed!", {
-						position: "top-center",
-						autoClose: 3000,
-						theme: "dark",
-					});
-					setSuccess(true);
-					setTimeout(() => {
-						setSuccess(false);
-					}, 4000);
-					setSolved(true);
+					setStatus('Pending')
 				} else {
 					throw response;
 				}
@@ -210,7 +231,7 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 					</div>
 				</div>
 			</Split>
-			<EditorFooter handleSubmit={handleSubmit} />
+			<EditorFooter handleSubmit={handleSubmit} status={status} />
 		</div>
 	);
 };

@@ -93,6 +93,7 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 				language: language.toUpperCase(),
 				problemId: problem._id
 			}, config);
+			console.log(response)
 
 			if (response.data.success) {
 				const submissionId = response.data.data.submission._id;

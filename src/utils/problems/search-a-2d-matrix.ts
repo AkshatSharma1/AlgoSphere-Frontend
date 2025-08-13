@@ -85,4 +85,12 @@ export const search2DMatrix: Problem = {
 	handlerFunction: search2DMatrixHandler,
 	starterFunctionName: "function searchMatrix",
 	order: 5,
+    // --- Start of Added Properties ---
+    _id: "search-a-2d-matrix-id", // Placeholder
+    difficulty: "Medium", // Placeholder
+    description: "", // Placeholder
+    userSnippet: "", // Placeholder
+    codeStubs: [], // Placeholder
+    testCases: [], // Placeholder
+    // --- End of Added Properties ---
 };

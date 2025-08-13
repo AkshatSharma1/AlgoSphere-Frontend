@@ -1,16 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import PreferenceNav from "./PreferenceNav/PreferenceNav";
 import Split from "react-split";
 import AceEditor from 'react-ace';
 import "../../../imports/AceBuilderImports";
-import EditorFooter from "./EditorFooter";
+import EditorFooter, { SubmissionStatus } from "./EditorFooter";
 import { Problem } from "@/utils/types/problem";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/firebase/firebase";
 import { toast } from "react-toastify";
 import { useRouter } from "next/router";
-import { useSocket } from '../../../context/SocketContext'
 import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
 
 type PlaygroundProps = {
 	problem: Problem;
@@ -25,146 +23,116 @@ export interface ISettings {
 }
 
 const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved }) => {
-	const socket = useSocket();
-
-	useEffect(() => {
-		if (!socket) return;
-
-		// Check if the socket is connected
-		if (socket.connected) {
-			console.log('Socket connected');
-		} else {
-			console.warn('Socket not connected yet');
-		}
-		console.log('socket', socket)
-
-		socket.on('connect', () => {
-			console.log('Connected to server');
-		});
-
-		socket.on('submissionPayloadResponse', (data) => {
-			setStatus('');
-			if (data.response.status === 'Success') {
-				toast.success("Congrats! All tests passed!", {
-					position: "top-center",
-					autoClose: 3000,
-					theme: "dark",
-				});
-				setSuccess(true);
-				setSolved(true);
-			} else {
-				toast.error(`Wrong Answer \n ${data.response.output}`, {
-					position: "top-center",
-					autoClose: 3000,
-					theme: "dark",
-				});
-			}
-			setTimeout(() => {
-				setSuccess(false);
-			}, 4000);
-			console.log('Received submissionPayloadResponse:', data);
-		});
-
-		socket.on('disconnect', () => {
-			console.log('Disconnected from server');
-		});
-
-		return () => {
-			socket.off('connect');
-			socket.off('submissionPayloadResponse');
-			socket.off('disconnect');
-		};
-	}, [socket]);
-
-
-
+	const { user, token } = useAuth();
 	const [activeTestCaseId, setActiveTestCaseId] = useState<number>(0);
-	let [userCode, setUserCode] = useState<string>(problem?.codeStubs[0].userSnippet);
-	const [language, setLanguage] = useState<string>('javascript');
-	const [code, setCode] = useState<string>(problem?.codeStubs[0].userSnippet);
+	const [language, setLanguage] = useState<string>('python');
 	const [theme, setTheme] = useState<string>('twilight');
-	const [status, setStatus] = useState<"" | "Pending" | "Success" | "RE" | "TLE" | "ME" | "WA">("");
+	const [status, setStatus] = useState<SubmissionStatus>("");
+	const [isConsoleOpen, setIsConsoleOpen] = useState(true);
 	const [settings, setSettings] = useState<ISettings>({
 		fontSize: "16px",
 		settingsModalIsOpen: false,
 		dropdownIsOpen: false,
 	});
 
-	const [user] = useAuthState(auth);
-	const {
-		query: { pid },
-	} = useRouter();
+	// State for the user's editable code
+	const [userCode, setUserCode] = useState<string>("");
 
-	const handleSubmit = async () => {
-		if (!user) {
-			toast.error("Please login to submit your code", {
-				position: "top-center",
-				autoClose: 3000,
-				theme: "dark",
-			});
-			return;
+	// Refs to store the non-editable snippets
+	const startSnippetRef = useRef<string>("");
+	const endSnippetRef = useRef<string>("");
+
+	useEffect(() => {
+		const matchingStub = problem.codeStubs.find((stub: { language: string }) => stub.language.toLowerCase() === language.toLowerCase());
+		if (matchingStub) {
+			startSnippetRef.current = matchingStub.startSnippet || "";
+			endSnippetRef.current = matchingStub.endSnippet || "";
+			setUserCode(matchingStub.userSnippet || "");
+		} else {
+			// Handle case where no stub is found for the selected language
+			startSnippetRef.current = `// No code stub available for ${language}`;
+			endSnippetRef.current = "";
+			setUserCode("");
 		}
-		try {
-			socket?.emit("setUserId", "1");
-			await axios.post(`${process.env.NEXT_PUBLIC_CODE_SUBMISSION_URL}/api/v1/submissions`, {
-				code, language, userId: 1, problemId: '667430fcb50c9db42efe737f'
-			}).then((response) => {
-				if (response.data?.success) {
-					setStatus('Pending')
-				} else {
-					throw response;
-				}
-			})
+	}, [problem, language]);
 
-			// if (typeof handler === "function") {
-			// 	const success = handler(cb);
-			// 	if (success) {
-			// 		toast.success("Congrats! All tests passed!", {
-			// 			position: "top-center",
-			// 			autoClose: 3000,
-			// 			theme: "dark",
-			// 		});
-			// 		
+	// This is the combined code that will be displayed in the editor
+	const editorValue = `${startSnippetRef.current}\n${userCode}\n${endSnippetRef.current}`;
 
-			// 		const userRef = doc(firestore, "users", user.uid);
-			// 		await updateDoc(userRef, {
-			// 			solvedProblems: arrayUnion(pid),
-			// 		});
-			// 		setSolved(true);
-			// 	}
-			// }
-		} catch (error: any) {
-			console.log(error.message);
-			if (
-				error.message.startsWith("AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:")
-			) {
-				toast.error("Oops! One or more test cases failed", {
-					position: "top-center",
-					autoClose: 3000,
-					theme: "dark",
-				});
-			} else {
-				toast.error(error.message, {
-					position: "top-center",
-					autoClose: 3000,
-					theme: "dark",
-				});
-			}
+	const handleEditorChange = (newValue: string) => {
+		const startSnippet = startSnippetRef.current;
+		const endSnippet = endSnippetRef.current;
+
+		// Protect the start and end snippets from being edited
+		if (newValue.startsWith(startSnippet) && newValue.endsWith(endSnippet)) {
+			const startSnippetLines = startSnippet.split('\n').length;
+			const totalLines = newValue.split('\n').length;
+			const endSnippetLines = endSnippet.split('\n').length;
+
+			// Extract the editable part
+			const editableContent = newValue.split('\n').slice(startSnippetLines, totalLines - endSnippetLines).join('\n');
+			setUserCode(editableContent);
 		}
 	};
 
-	useEffect(() => {
-		const code = localStorage.getItem(`code-${pid}`);
-		if (user) {
-			setUserCode(code ? JSON.parse(code) : problem?.codeStubs[0]?.userSnippet);
-		} else {
-			setUserCode(problem?.codeStubs[0]?.userSnippet);
-		}
-	}, [pid, user, problem?.codeStubs[0]?.userSnippet]);
 
-	const onChange = (value: string) => {
-		setUserCode(value);
-		localStorage.setItem(`code-${pid}`, JSON.stringify(value));
+	const handleSubmit = async () => {
+		if (!user || !token) {
+			return toast.error("Please login to submit your code");
+		}
+		if (!userCode) {
+			return toast.warn("Code cannot be empty.");
+		}
+
+		try {
+			setStatus('Pending');
+			const config = { headers: { Authorization: `Bearer ${token}` } };
+
+			const response = await axios.post(`${process.env.NEXT_PUBLIC_CODE_SUBMISSION_URL}/api/v1/submissions`, {
+				code: userCode, // We only submit the user's editable code
+				language: language.toUpperCase(),
+				problemId: problem._id
+			}, config);
+
+			if (response.data.success) {
+				const submissionId = response.data.data.submission._id;
+				pollForResult(submissionId, config);
+			} else {
+				throw new Error("Submission failed to be accepted.");
+			}
+
+		} catch (error: any) {
+			console.error("Submission failed:", error);
+			toast.error(error.response?.data?.message || "Failed to submit.");
+			setStatus("");
+		}
+	};
+
+	const pollForResult = (submissionId: string, config: any) => {
+		const intervalId = setInterval(async () => {
+			try {
+				const { data } = await axios.get(`${process.env.NEXT_PUBLIC_CODE_SUBMISSION_URL}/api/v1/submissions/${submissionId}`, config);
+
+				if (data.data.status !== "Pending") {
+					clearInterval(intervalId);
+					setStatus(data.data.status);
+
+					if (data.data.status === "Success") {
+						toast.success("Congrats! All tests passed!");
+						setSuccess(true);
+						setSolved(true);
+						setTimeout(() => setSuccess(false), 4000);
+					} else {
+						toast.error(`Result: ${data.data.status}`);
+					}
+				}
+			} catch (error) {
+				console.error("Polling error:", error);
+				clearInterval(intervalId);
+				setStatus("Error" as SubmissionStatus);
+				toast.error("Could not retrieve submission result.");
+			}
+		}, 2000);
 	};
 
 	return (
@@ -172,11 +140,11 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 			<PreferenceNav settings={settings} setSettings={setSettings} language={language} setLanguage={setLanguage}
 				theme={theme} setTheme={setTheme} />
 
-			<Split className='h-[calc(100vh-94px)]' direction='vertical' sizes={[60, 40]} minSize={60}>
+			<Split className='h-[calc(100vh-94px)]' direction='vertical' sizes={isConsoleOpen ? [60, 40] : [100, 0]} minSize={isConsoleOpen ? 60 : 0}>
 				<div className='w-full overflow-auto'>
 					<AceEditor
-						value={code}
-						onChange={(e: string) => setCode(e)}
+						value={editorValue} // Bind to the combined value
+						onChange={handleEditorChange} // Use the new handler
 						mode={language}
 						theme={theme}
 						name='codeEditor'
@@ -191,47 +159,49 @@ const Playground: React.FC<PlaygroundProps> = ({ problem, setSuccess, setSolved 
 						height='100%'
 					/>
 				</div>
-				<div className='w-full px-5 overflow-auto'>
-					{/* testcase heading */}
-					<div className='flex h-10 items-center space-x-6'>
-						<div className='relative flex h-full flex-col justify-center cursor-pointer'>
-							<div className='text-sm font-medium leading-5 text-white'>Testcases</div>
-							<hr className='absolute bottom-0 h-0.5 w-full rounded-full border-none bg-white' />
+				{isConsoleOpen && (
+					<div className='w-full px-5 overflow-auto'>
+						<div className='flex h-10 items-center space-x-6'>
+							<div className='relative flex h-full flex-col justify-center cursor-pointer'>
+								<div className='text-sm font-medium leading-5 text-white'>Testcases</div>
+								<hr className='absolute bottom-0 h-0.5 w-full rounded-full border-none bg-white' />
+							</div>
 						</div>
-					</div>
 
-					<div className='flex'>
-						{problem?.testCases?.map((example: any, index: number) => (
-							<div
-								className='mr-2 items-start mt-2 '
-								onClick={() => setActiveTestCaseId(index)}
-							>
-								<div className='flex flex-wrap items-center gap-y-4'>
-									<div
-										className={`font-medium items-center transition-all focus:outline-none inline-flex bg-dark-fill-3 hover:bg-dark-fill-2 relative rounded-lg px-4 py-1 cursor-pointer whitespace-nowrap
-										${activeTestCaseId === index ? "text-white" : "text-gray-500"}
-									`}
-									>
-										Case {index + 1}
+						<div className='flex'>
+							{problem?.testCases?.map((example: any, index: number) => (
+								<div
+									key={index}
+									className='mr-2 items-start mt-2 '
+									onClick={() => setActiveTestCaseId(index)}
+								>
+									<div className='flex flex-wrap items-center gap-y-4'>
+										<div
+											className={`font-medium items-center transition-all focus:outline-none inline-flex bg-dark-fill-3 hover:bg-dark-fill-2 relative rounded-lg px-4 py-1 cursor-pointer whitespace-nowrap
+											${activeTestCaseId === index ? "text-white" : "text-gray-500"}
+										`}
+										>
+											Case {index + 1}
+										</div>
 									</div>
 								</div>
-							</div>
-						))}
-					</div>
+							))}
+						</div>
 
-					<div className='font-semibold my-4'>
-						<p className='text-sm font-medium mt-4 text-white'>Input:</p>
-						<div className='w-full cursor-text rounded-lg border px-3 py-[10px] bg-dark-fill-3 border-transparent text-white mt-2'>
-							{problem?.testCases[activeTestCaseId]?.input}
-						</div>
-						<p className='text-sm font-medium mt-4 text-white'>Output:</p>
-						<div className='w-full cursor-text rounded-lg border px-3 py-[10px] bg-dark-fill-3 border-transparent text-white mt-2'>
-							{problem?.testCases[activeTestCaseId]?.output}
+						<div className='font-semibold my-4'>
+							<p className='text-sm font-medium mt-4 text-white'>Input:</p>
+							<div className='w-full cursor-text rounded-lg border px-3 py-[10px] bg-dark-fill-3 border-transparent text-white mt-2'>
+								{problem?.testCases[activeTestCaseId]?.input}
+							</div>
+							<p className='text-sm font-medium mt-4 text-white'>Output:</p>
+							<div className='w-full cursor-text rounded-lg border px-3 py-[10px] bg-dark-fill-3 border-transparent text-white mt-2'>
+								{problem?.testCases[activeTestCaseId]?.output}
+							</div>
 						</div>
 					</div>
-				</div>
+				)}
 			</Split>
-			<EditorFooter handleSubmit={handleSubmit} status={status} />
+			<EditorFooter handleSubmit={handleSubmit} status={status} isConsoleOpen={isConsoleOpen} setIsConsoleOpen={setIsConsoleOpen} />
 		</div>
 	);
 };

@@ -4,10 +4,9 @@ import { BsCheckCircle } from "react-icons/bs";
 import { AiFillYoutube } from "react-icons/ai";
 import { IoClose } from "react-icons/io5";
 import YouTube from "react-youtube";
-import { auth, firestore } from "@/firebase/firebase";
 import { DBProblem } from "@/utils/types/problem";
-import { useAuthState } from "react-firebase-hooks/auth";
 import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
 
 type ProblemsTableProps = {
 	setLoadingProblems: React.Dispatch<React.SetStateAction<boolean>>;
@@ -19,8 +18,19 @@ const ProblemsTable: React.FC<ProblemsTableProps> = ({ setLoadingProblems }) => 
 		videoId: "",
 	});
 	const problems = useGetProblems(setLoadingProblems);
-	const solvedProblems = useGetSolvedProblems();
-	console.log("solvedProblems", solvedProblems);
+	// TODO: The 'solvedProblems' state is ready, but it needs a backend endpoint
+	// to fetch the list of solved problems for the logged-in user.
+	const [solvedProblems, setSolvedProblems] = useState<string[]>([]);
+	const { user } = useAuth();
+
+	// useEffect(() => {
+	// 	if (user) {
+	// 		// Example: const solved = await axios.get(`/api/v1/users/${user.id}/solved-problems`);
+	// 		// setSolvedProblems(solved.data);
+	// 	}
+	// }, [user]);
+
+
 	const closeModal = () => {
 		setYoutubePlayer({ isOpen: false, videoId: "" });
 	};
@@ -33,18 +43,19 @@ const ProblemsTable: React.FC<ProblemsTableProps> = ({ setLoadingProblems }) => 
 
 		return () => window.removeEventListener("keydown", handleEsc);
 	}, []);
+
 	return (
 		<>
 			<tbody className='text-white'>
-				{problems.length === 0 ? "No Data" : problems.map((problem, idx) => {
-					const difficulyColor =
-						problem.difficulty === "Easy"
+				{problems.map((problem, idx) => {
+					const difficultyColor =
+						problem.difficulty === "easy"
 							? "text-dark-green-s"
-							: problem.difficulty === "Medium"
+							: problem.difficulty === "medium"
 								? "text-dark-yellow"
 								: "text-dark-pink";
 					return (
-						<tr className={`${idx % 2 == 1 ? "bg-dark-layer-1" : ""}`} key={problem._id}>
+						<tr className={`${idx % 2 === 1 ? "bg-dark-layer-1" : ""}`} key={problem._id}>
 							<th className='px-2 py-4 font-medium whitespace-nowrap text-dark-green-s'>
 								{solvedProblems.includes(problem._id) && <BsCheckCircle fontSize={"18"} width='18' />}
 							</th>
@@ -66,7 +77,7 @@ const ProblemsTable: React.FC<ProblemsTableProps> = ({ setLoadingProblems }) => 
 									</Link>
 								)}
 							</td>
-							<td className={`px-6 py-4 ${difficulyColor}`}>{problem.difficulty}</td>
+							<td className={`px-6 py-4 ${difficultyColor}`}>{problem.difficulty}</td>
 							<td className={"px-6 py-4"}>{problem.category}</td>
 							<td className={"px-6 py-4"}>
 								{problem.videoId ? (
@@ -119,42 +130,23 @@ function useGetProblems(setLoadingProblems: React.Dispatch<React.SetStateAction<
 
 	useEffect(() => {
 		const getProblems = async () => {
-			// fetching data logic
 			setLoadingProblems(true);
-			await axios.get(`${process.env.NEXT_PUBLIC_CODE_PROBLEM_URL}/api/v1/problems`).then((response) => {
+			try {
+				const response = await axios.get(`${process.env.NEXT_PUBLIC_CODE_PROBLEM_URL}/api/v1/problems`);
 				if (response?.data?.success) {
 					setProblems(response?.data?.data);
 				} else {
-					throw response;
+					setProblems([]);
 				}
-			}).catch(() => {
+			} catch (error) {
+				console.error("Failed to fetch problems", error);
 				setProblems([]);
-			})
-			setLoadingProblems(false);
+			} finally {
+				setLoadingProblems(false);
+			}
 		};
 
 		getProblems();
 	}, [setLoadingProblems]);
 	return problems;
-}
-
-function useGetSolvedProblems() {
-	const [solvedProblems, setSolvedProblems] = useState<string[]>([]);
-	const [user] = useAuthState(auth);
-
-	useEffect(() => {
-		const getSolvedProblems = async () => {
-			// const userRef = doc(firestore, "users", user!.uid);
-			// const userDoc = await getDoc(userRef);
-
-			// if (userDoc.exists()) {
-			// 	setSolvedProblems(userDoc.data().solvedProblems);
-			// }
-		};
-
-		if (user) getSolvedProblems();
-		if (!user) setSolvedProblems([]);
-	}, [user]);
-
-	return solvedProblems;
 }

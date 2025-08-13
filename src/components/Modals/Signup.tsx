@@ -1,60 +1,44 @@
-import { authModalState } from "@/atoms/authModalAtom";
-import { auth, firestore } from "@/firebase/firebase";
-import { useEffect, useState } from "react";
-import { useSetRecoilState } from "recoil";
-import { useCreateUserWithEmailAndPassword } from "react-firebase-hooks/auth";
-import { useRouter } from "next/router";
-import { doc, setDoc } from "firebase/firestore";
-import { toast } from "react-toastify";
+import React, { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'react-toastify';
+import axios from 'axios';
 
-type SignupProps = {};
-
-const Signup: React.FC<SignupProps> = () => {
-	const setAuthModalState = useSetRecoilState(authModalState);
-	const handleClick = () => {
-		setAuthModalState((prev) => ({ ...prev, type: "login" }));
-	};
+const Signup: React.FC = () => {
 	const [inputs, setInputs] = useState({ email: "", displayName: "", password: "" });
-	const router = useRouter();
-	const [createUserWithEmailAndPassword, user, loading, error] = useCreateUserWithEmailAndPassword(auth);
+	const { login } = useAuth();
+	const [loading, setLoading] = useState(false);
+
 	const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
 		setInputs((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 	};
 
 	const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
-		if (!inputs.email || !inputs.password || !inputs.displayName) return alert("Please fill all fields");
+		if (!inputs.email || !inputs.password || !inputs.displayName) {
+			return toast.warn("Please fill all fields");
+		}
+		setLoading(true);
 		try {
-			toast.loading("Creating your account", { position: "top-center", toastId: "loadingToast" });
-			const newUser = await createUserWithEmailAndPassword(inputs.email, inputs.password);
-			if (!newUser) return;
-			const userData = {
-				uid: newUser.user.uid,
-				email: newUser.user.email,
-				displayName: inputs.displayName,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-				likedProblems: [],
-				dislikedProblems: [],
-				solvedProblems: [],
-				starredProblems: [],
-			};
-			await setDoc(doc(firestore, "users", newUser.user.uid), userData);
-			router.push("/");
+			const response = await axios.post(`${process.env.NEXT_PUBLIC_USER_API_URL}/users/register`, {
+				username: inputs.displayName,
+				email: inputs.email,
+				password: inputs.password,
+			});
+
+			if (response.data.success) {
+				login(response.data.data);
+				toast.success("Account created successfully!");
+			}
 		} catch (error: any) {
-			toast.error(error.message, { position: "top-center" });
+			toast.error(error.response?.data?.message || "Registration failed");
 		} finally {
-			toast.dismiss("loadingToast");
+			setLoading(false);
 		}
 	};
 
-	useEffect(() => {
-		if (error) alert(error.message);
-	}, [error]);
-
 	return (
 		<form className='space-y-6 px-6 pb-4' onSubmit={handleRegister}>
-			<h3 className='text-xl font-medium text-white'>Register to AlgoCode</h3>
+			<h3 className='text-xl font-medium text-white'>Register to AlgoSphere</h3>
 			<div>
 				<label htmlFor='email' className='text-sm font-medium block mb-2 text-gray-300'>
 					Email
@@ -64,10 +48,7 @@ const Signup: React.FC<SignupProps> = () => {
 					type='email'
 					name='email'
 					id='email'
-					className='
-        border-2 outline-none sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5
-        bg-gray-600 border-gray-500 placeholder-gray-400 text-white
-    '
+					className='border-2 outline-none sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 bg-gray-600 border-gray-500 placeholder-gray-400 text-white'
 					placeholder='name@company.com'
 				/>
 			</div>
@@ -77,13 +58,10 @@ const Signup: React.FC<SignupProps> = () => {
 				</label>
 				<input
 					onChange={handleChangeInput}
-					type='displayName'
+					type='text'
 					name='displayName'
 					id='displayName'
-					className='
-        border-2 outline-none sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5
-        bg-gray-600 border-gray-500 placeholder-gray-400 text-white
-    '
+					className='border-2 outline-none sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 bg-gray-600 border-gray-500 placeholder-gray-400 text-white'
 					placeholder='John Doe'
 				/>
 			</div>
@@ -96,29 +74,18 @@ const Signup: React.FC<SignupProps> = () => {
 					type='password'
 					name='password'
 					id='password'
-					className='
-        border-2 outline-none sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5
-        bg-gray-600 border-gray-500 placeholder-gray-400 text-white
-    '
+					className='border-2 outline-none sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 bg-gray-600 border-gray-500 placeholder-gray-400 text-white'
 					placeholder='*******'
 				/>
 			</div>
-
 			<button
 				type='submit'
-				className='w-full text-white focus:ring-blue-300 font-medium rounded-lg
-            text-sm px-5 py-2.5 text-center bg-brand-orange hover:bg-brand-orange-s
-        '
+				className='w-full text-white focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center bg-brand-orange hover:bg-brand-orange-s'
+				disabled={loading}
 			>
 				{loading ? "Registering..." : "Register"}
 			</button>
-
-			<div className='text-sm font-medium text-gray-300'>
-				Already have an account?{" "}
-				<a href='#' className='text-blue-700 hover:underline' onClick={handleClick}>
-					Log In
-				</a>
-			</div>
+			{/* You can add a link back to the login modal here if you wish */}
 		</form>
 	);
 };

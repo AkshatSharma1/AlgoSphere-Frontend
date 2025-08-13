@@ -4,16 +4,8 @@ import { ISettings } from "../Playground";
 import SettingsModal from "@/components/Modals/SettingsModal";
 import Languages from '../../../../constants/language';
 import Themes from '../../../../constants/themes';
+import CustomSelect from "@/components/common/CustomSelect";
 
-type languageSupport = {
-    languageName: string,
-    value: string
-}
-
-type themeStyle = {
-    themeName: string,
-    value: string
-}
 type PreferenceNavProps = {
 	settings: ISettings;
 	language:string;
@@ -25,6 +17,9 @@ type PreferenceNavProps = {
 
 const PreferenceNav: React.FC<PreferenceNavProps> = ({ setSettings, settings, language, setLanguage, theme, setTheme }) => {
 	const [isFullScreen, setIsFullScreen] = useState(false);
+
+	const languageOptions = Languages.map(lang => ({ value: lang.value, label: lang.languageName }));
+	const themeOptions = Themes.map(t => ({ value: t.value, label: t.themeName }));
 
 	const handleFullScreen = () => {
 		if (isFullScreen) {
@@ -53,33 +48,18 @@ const PreferenceNav: React.FC<PreferenceNavProps> = ({ setSettings, settings, la
 	}, [isFullScreen]);
 
 	return (
-		<div className='flex items-center justify-between bg-dark-layer-2 h-11 w-full '>
-			<div className='flex items-center'>
-					<div className='flex items-center px-1 text-white gap-2'>
-						<div>
-							<select 
-								className="select select-info w-full select-sm max-w-xs bg-dark-fill-3" 
-								value={language}
-								onChange={(e) => setLanguage(e.target.value)}
-							>
-								
-								{Languages.map((language: languageSupport) => (
-									<option key={language.value} value={language.value}> {language.languageName} </option>
-								))}
-							</select>
-                    	</div>
-						<div>
-							<select 
-								className="select select-info w-full select-sm max-w-xs bg-dark-fill-3" 
-								value={theme}
-								onChange={(e) => setTheme(e.target.value)}
-							> 
-								{Themes.map((theme: themeStyle) => (
-									<option key={theme.value} value={theme.value}> {theme.themeName} </option>
-								))}
-							</select>
-                    	</div>
-					</div>
+		<div className='flex items-center justify-between bg-dark-layer-2 text-white h-11 w-full '>
+			<div className='flex items-center space-x-4 px-4'>
+				<CustomSelect
+					options={languageOptions}
+					value={language}
+					onChange={(value) => setLanguage(value)}
+				/>
+				<CustomSelect
+					options={themeOptions}
+					value={theme}
+					onChange={(value) => setTheme(value)}
+				/>
 			</div>
 
 			<div className='flex items-center m-2'>

@@ -1,16 +1,21 @@
-import { authModalState } from "@/atoms/authModalAtom";
-import React, { useEffect } from "react";
-import { IoClose } from "react-icons/io5";
+import React, { useState } from "react";
 import Login from "./Login";
 import ResetPassword from "./ResetPassword";
 import Signup from "./Signup";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { IoClose } from "react-icons/io5";
+import { useRouter } from "next/router";
 
 type AuthModalProps = {};
 
 const AuthModal: React.FC<AuthModalProps> = () => {
-	const authModal = useRecoilValue(authModalState);
-	const closeModal = useCloseModal();
+	const [authType, setAuthType] = useState<"login" | "register" | "forgotPassword">("login");
+	const router = useRouter();
+
+	const closeModal = () => {
+		// Instead of managing state, we just navigate away from the auth page
+		router.push("/");
+	};
+
 	return (
 		<>
 			<div
@@ -29,7 +34,31 @@ const AuthModal: React.FC<AuthModalProps> = () => {
 								<IoClose className='h-5 w-5' />
 							</button>
 						</div>
-						{authModal.type === "login" ? <Login /> : authModal.type === "register" ? <Signup /> : <ResetPassword />}
+						{/* Logic to switch between Login, Signup, and ResetPassword */}
+						{authType === "login" ? (
+							<Login />
+						) : authType === "register" ? (
+							<Signup />
+						) : (
+							<ResetPassword />
+						)}
+
+						{/* Links to switch forms */}
+						<div className="text-center text-white pb-4">
+							{authType === "login" ? (
+								<>
+									<span>Dont have an account? </span>
+									<button onClick={() => setAuthType("register")} className="text-blue-400 hover:underline">Sign up</button>
+									<span className="mx-2">|</span>
+									<button onClick={() => setAuthType("forgotPassword")} className="text-blue-400 hover:underline">Forgot Password?</button>
+								</>
+							) : (
+								<>
+									<span>Already have an account? </span>
+									<button onClick={() => setAuthType("login")} className="text-blue-400 hover:underline">Log in</button>
+								</>
+							)}
+						</div>
 					</div>
 				</div>
 			</div>
@@ -37,21 +66,3 @@ const AuthModal: React.FC<AuthModalProps> = () => {
 	);
 };
 export default AuthModal;
-
-function useCloseModal() {
-	const setAuthModal = useSetRecoilState(authModalState);
-
-	const closeModal = () => {
-		setAuthModal((prev) => ({ ...prev, isOpen: false, type: "login" }));
-	};
-
-	useEffect(() => {
-		const handleEsc = (e: KeyboardEvent) => {
-			if (e.key === "Escape") closeModal();
-		};
-		window.addEventListener("keydown", handleEsc);
-		return () => window.removeEventListener("keydown", handleEsc);
-	}, []);
-
-	return closeModal;
-}

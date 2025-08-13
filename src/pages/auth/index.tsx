@@ -1,26 +1,31 @@
-import { authModalState } from "@/atoms/authModalAtom";
 import AuthModal from "@/components/Modals/AuthModal";
 import Navbar from "@/components/Navbar/Navbar";
-import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/firebase/firebase";
-import { useRecoilValue } from "recoil";
-import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useEffect } from "react";
 import { useRouter } from "next/router";
 import Image from "next/image";
-type AuthPageProps = {};
 
-const AuthPage: React.FC<AuthPageProps> = () => {
-	const authModal = useRecoilValue(authModalState);
-	const [user, loading, error] = useAuthState(auth);
-	const [pageLoading, setPageLoading] = useState(true);
+const AuthPage: React.FC = () => {
+	const { user, loading } = useAuth();
 	const router = useRouter();
 
 	useEffect(() => {
-		if (user) router.push("/");
-		if (!loading && !user) setPageLoading(false);
-	}, [user, router, loading]);
+		if (user && !loading) {
+			router.push("/");
+		}
+	}, [user, loading, router]);
 
-	if (pageLoading) return null;
+	// Show a loading indicator while the auth state is being determined
+	if (loading) {
+		return (
+			<div className='bg-gradient-to-b from-gray-600 to-black h-screen flex justify-center items-center'>
+				<div className='text-white text-2xl'>Loading...</div>
+			</div>
+		);
+	}
+
+	// Do not render the auth page if the user is logged in (while redirecting)
+	if (user) return null;
 
 	return (
 		<div className='bg-gradient-to-b from-gray-600 to-black h-screen relative'>
@@ -29,7 +34,8 @@ const AuthPage: React.FC<AuthPageProps> = () => {
 				<div className='flex items-center justify-center h-[calc(100vh-5rem)] pointer-events-none select-none'>
 					<Image src='/hero.png' alt='Hero img' width={700} height={700} />
 				</div>
-				{authModal.isOpen && <AuthModal />}
+				{/* This AuthModal can now be simplified or controlled by local state if needed */}
+				<AuthModal />
 			</div>
 		</div>
 	);

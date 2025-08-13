@@ -8,6 +8,7 @@ export type Example = {
 
 // local problem data
 export type Problem = {
+	difficulty: string;
 	description: string;
 	userSnippet: string;
 	codeStubs: any;
